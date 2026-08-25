@@ -27,8 +27,10 @@ services:
     volumes:
       # 配置文件目录（首次部署见 README：server-data/data/.config.yaml）
       - ./server-data/data:/opt/xiaozhi-esp32-server/data
-      # 语音识别模型（首次部署需下载 model.pt，见 README）
-      - ./server-data/models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
+      # 语音识别模型（首次部署需下载 model.pt，见 README；整目录挂载，funasr 需要 config.yaml 等）
+      - ./server-data/models/SenseVoiceSmall:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall
+      # VAD 语音活动检测模型（.dockerignore 排除了 models，需卷挂载）
+      - ./server-data/models/snakers4_silero-vad:/opt/xiaozhi-esp32-server/models/snakers4_silero-vad
 
   # 智控台（修改版前端 dist + 官方 Java 后端）
   # 构建方式：基于南大源 web_latest 镜像 + 覆盖预构建的 dist（无需 node/maven，国内可用）

@@ -5,6 +5,9 @@ data/
 tmp/
 theme-preview/
 _tmp_png/
+# Docker 运行时数据（含 900MB 模型 + 带 secret 的 config，禁止入库）
+server-data/
+.workbuddy/
 新版前端/node_modules/
 xiaozhi-esp32-server-main/main/xiaozhi-server/models/
 xiaozhi-esp32-server-main/main/xiaozhi-server/mysql/
