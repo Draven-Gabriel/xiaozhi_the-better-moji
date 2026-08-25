@@ -1,0 +1,90 @@
+# ============================================================
+# Moji 小智机器人 - Docker 一键部署（构建版）
+# 用法：docker compose up -d --build
+# 首次构建 web 镜像需要下载 node/maven 依赖，约 10-30 分钟
+# ============================================================
+
+services:
+  # 核心 AI 引擎（Python，本地源码构建，包含全部自定义改动：
+  # 抢话过滤 / Open-Meteo 免费天气 / 音乐匹配修复 / 记忆优化）
+  xiaozhi-esp32-server:
+    build:
+      context: ./xiaozhi-esp32-server-main
+      dockerfile: Dockerfile-server
+    image: xiaozhi-moji/server:latest
+    container_name: xiaozhi-esp32-server
+    restart: always
+    depends_on:
+      - xiaozhi-esp32-server-db
+      - xiaozhi-esp32-server-redis
+    ports:
+      - "8000:8000"   # WebSocket（设备连接）
+      - "8003:8003"   # HTTP（视觉分析）
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 配置文件目录（首次部署见 README：server-data/data/.config.yaml）
+      - ./server-data/data:/opt/xiaozhi-esp32-server/data
+      # 语音识别模型（首次部署需下载 model.pt，见 README）
+      - ./server-data/models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
+
+  # 智控台（新版前端 + Java 后端，本地源码构建）
+  xiaozhi-esp32-server-web:
+    build:
+      context: ./xiaozhi-esp32-server-main
+      dockerfile: Dockerfile-web
+    image: xiaozhi-moji/web:latest
+    container_name: xiaozhi-esp32-server-web
+    restart: always
+    depends_on:
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+      xiaozhi-esp32-server-redis:
+        condition: service_healthy
+    ports:
+      - "8002:8002"   # 智控台 Web
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://xiaozhi-esp32-server-db:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+      - SPRING_DATASOURCE_DRUID_USERNAME=root
+      - SPRING_DATASOURCE_DRUID_PASSWORD=123456
+      - SPRING_DATA_REDIS_HOST=xiaozhi-esp32-server-redis
+      - SPRING_DATA_REDIS_PASSWORD=
+      - SPRING_DATA_REDIS_PORT=6379
+    volumes:
+      - ./server-data/uploadfile:/uploadfile
+
+  # 数据库
+  xiaozhi-esp32-server-db:
+    image: mysql:latest
+    container_name: xiaozhi-esp32-server-db
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    expose:
+      - 3306
+    volumes:
+      - ./server-data/mysql:/var/lib/mysql
+    environment:
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=xiaozhi_esp32_server
+      - MYSQL_INITDB_ARGS="--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
+
+  # Redis
+  xiaozhi-esp32-server-redis:
+    image: redis:8.0
+    container_name: xiaozhi-esp32-server-redis
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    expose:
+      - 6379
