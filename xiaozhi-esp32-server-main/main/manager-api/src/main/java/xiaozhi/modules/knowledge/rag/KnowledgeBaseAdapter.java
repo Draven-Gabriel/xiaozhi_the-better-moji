@@ -1,0 +1,224 @@
+package xiaozhi.modules.knowledge.rag;
+
+import java.util.List;
+import java.util.Map;
+
+import xiaozhi.modules.knowledge.dto.dataset.DatasetDTO;
+
+import xiaozhi.common.page.PageData;
+import xiaozhi.modules.knowledge.dto.KnowledgeFilesDTO;
+import xiaozhi.modules.knowledge.dto.document.DocumentDTO;
+import xiaozhi.modules.knowledge.dto.document.ChunkDTO;
+import xiaozhi.modules.knowledge.dto.document.RetrievalDTO;
+import java.util.function.Consumer;
+
+/**
+ * 知识库API适配器抽象基类
+ * 定义通用的知识库操作接口，支持多种后端API实现
+ */
+public abstract class KnowledgeBaseAdapter {
+
+        /**
+         * 获取适配器类型标识
+         * 
+         * @return 适配器类型（如：ragflow, milvus, pinecone等）
+         */
+        public abstract String getAdapterType();
+
+        /**
+         * 初始化适配器配置
+         * 
+         * @param config 配置参数
+         */
+        public abstract void initialize(Map<String, Object> config);
+
+        /**
+         * 验证配置是否有效
+         * 
+         * @param config 配置参数
+         * @return 验证结果
+         */
+        public abstract boolean validateConfig(Map<String, Object> config);
+
+        /**
+         * 分页查询文档列表
+         * 
+         * @param datasetId   知识库ID
+         * @param queryParams 查询参数
+         * @param page        页码
+         * @param limit       每页数量
+         * @return 分页数据
+         */
+        public abstract PageData<KnowledgeFilesDTO> getDocumentList(String datasetId,
+                        DocumentDTO.ListReq req);
+
+        /**
+         * 根据文档ID获取文档详情
+         * 
+         * @param datasetId  知识库ID
+         * @param documentId 文档ID
+         * @return 文档详情 (强类型 InfoVO)
+         */
+        public abstract DocumentDTO.InfoVO getDocumentById(String datasetId, String documentId);
+
+        /**
+         * 上传文档到知识库
+         * 
+         * @param req 上传请求参数
+         * @return 上传的文档信息
+         */
+        public abstract KnowledgeFilesDTO uploadDocument(DocumentDTO.UploadReq req);
+
+        /**
+         * 根据状态分页查询文档列表
+         * 
+         * @param datasetId 知识库ID
+         * @param status    文档解析状态
+         * @param page      页码
+         * @param limit     每页数量
+         * @return 分页数据
+         */
+        public abstract PageData<KnowledgeFilesDTO> getDocumentListByStatus(String datasetId,
+                        Integer status,
+                        Integer page,
+                        Integer limit);
+
+        /**
+         * 删除文档 (支持批量删除)
+         * 
+         * @param datasetId 知识库ID
+         * @param req       包含文档ID列表的请求对象
+         */
+        public abstract void deleteDocument(String datasetId, DocumentDTO.BatchIdReq req);
+
+        /**
+         * 解析文档（切块）
+         * 
+         * @param datasetId   知识库ID
+         * @param documentIds 文档ID列表
+         * @return 解析结果
+         */
+        public abstract boolean parseDocuments(String datasetId, List<String> documentIds);
+
+        /**
+         * 列出指定文档的切片
+         * 
+         * @param datasetId  知识库ID
+         * @param documentId 文档ID
+         * @param req        列表请求参数 (分页、关键词等)
+         * @return 切片列表VO
+         */
+        public abstract ChunkDTO.ListVO listChunks(String datasetId,
+                        String documentId,
+                        ChunkDTO.ListReq req);
+
+        /**
+         * 召回测试 - 从知识库中检索相关切片
+         * 
+         * @param req 检索测试请求参数
+         * @return 召回测试结果
+         */
+        public abstract RetrievalDTO.ResultVO retrievalTest(
+                        RetrievalDTO.TestReq req);
+
+        /**
+         * 测试连接
+         * 
+         * @return 连接测试结果
+         */
+        public abstract boolean testConnection();
+
+        /**
+         * 获取适配器状态信息
+         * 
+         * @return 状态信息
+         */
+        public abstract Map<String, Object> getStatus();
+
+        /**
+         * 获取支持的配置参数
+         * 
+         * @return 配置参数说明
+         */
+        public abstract Map<String, Object> getSupportedConfig();
+
+        /**
+         * 获取默认配置
+         * 
+         * @return 默认配置
+         */
+        public abstract Map<String, Object> getDefaultConfig();
+
+        /**
+         * 创建数据集
+         * 
+         * @param req 创建参数
+         * @return 数据集详情
+         */
+        public abstract DatasetDTO.InfoVO createDataset(DatasetDTO.CreateReq req);
+
+        /**
+         * 更新数据集
+         * 
+         * @param datasetId 数据集ID
+         * @param req       更新参数
+         * @return 数据集详情
+         */
+        public abstract DatasetDTO.InfoVO updateDataset(String datasetId, DatasetDTO.UpdateReq req);
+
+        /**
+         * 删除数据集
+         * 
+         * @param req 删除请求参数（包含ID列表）
+         * @return 批量操作结果
+         */
+        public abstract DatasetDTO.BatchOperationVO deleteDataset(DatasetDTO.BatchIdReq req);
+
+        /**
+         * 获取数据集的文档数量
+         *
+         * @param datasetId 数据集ID
+         * @return 文档数量
+         */
+        public abstract Integer getDocumentCount(String datasetId);
+
+        /**
+         * 获取数据集完整信息（名称、简介、文档数量等）
+         * 用于检测 RAGFlow 端是否已删除、同步名称/简介变更
+         *
+         * @param datasetId 数据集ID
+         * @return 数据集详情，若 RAGFlow 端不存在则返回 null
+         */
+        public abstract DatasetDTO.InfoVO getDatasetInfo(String datasetId);
+
+        /**
+         * 发送流式请求 (SSE)
+         * 
+         * @param endpoint API端点
+         * @param body     请求体
+         * @param onData   数据回调
+         */
+        public abstract void postStream(String endpoint, Object body, Consumer<String> onData);
+
+        /**
+         * SearchBot 提问
+         *
+         * @param config RAG配置
+         * @param body   请求体
+         * @param onData 数据回调
+         * @return 响应对象
+         */
+        public abstract Object postSearchBotAsk(Map<String, Object> config, Object body,
+                        Consumer<String> onData);
+
+        /**
+         * AgentBot 对话
+         *
+         * @param config  RAG配置
+         * @param agentId Agent ID
+         * @param body    请求体
+         * @param onData  数据回调
+         */
+        public abstract void postAgentBotCompletion(Map<String, Object> config, String agentId, Object body,
+                        Consumer<String> onData);
+}

@@ -1,0 +1,8 @@
+# 本地覆盖：仅将「智控台」web 服务替换为注入新前端的本地镜像
+# 用法：docker compose -f docker-compose_all.yml -f docker-compose.local.yml up -d
+# 其余服务（server / db / redis）沿用 docker-compose_all.yml 的缓存镜像
+version: '3'
+services:
+  xiaozhi-esp32-server-web:
+    image: xiaozhi-web-local:latest
+    container_name: xiaozhi-esp32-server-web

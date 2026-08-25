@@ -1,0 +1,8 @@
+# 本地前端镜像：基于已缓存的 web_latest，注入刚移植并构建好的新版 manager-web 前端
+# 这样无需从 Docker Hub 拉取 node:18 / maven 基座（本环境 Docker Hub 不可达）
+FROM ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
+
+# 覆盖旧的前端静态产物（dist 来自本地 npm run build，含全部 UI 改动）
+COPY main/manager-web/dist/ /usr/share/nginx/html/
+
+# 保持原 entrypoint（nginx + Java manager-api 同时启动）

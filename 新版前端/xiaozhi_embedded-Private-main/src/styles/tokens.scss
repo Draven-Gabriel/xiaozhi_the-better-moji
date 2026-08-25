@@ -1,0 +1,295 @@
+// =============================================================================
+// Apple Design System Tokens
+// 苹果官网风格设计系统 Token
+// 使用：
+//   • :root CSS 变量（运行时 themeable，可被组件 scoped style 直接引用）
+//   • $apple-* SCSS 变量（编译期，可在 @mixin / 函数 / 嵌套规则中使用）
+//   • @mixin 工具（毛玻璃、悬浮卡片等组合样式）
+// =============================================================================
+
+
+// =============================================================================
+// 1) CSS Custom Properties —— 运行时 Token
+// =============================================================================
+:root {
+  // ---------------------------------------------------------------------------
+  // Color · 颜色
+  // ---------------------------------------------------------------------------
+
+  // —— 背景 · Background
+  --apple-bg:           #f5f5f7;   // 主背景（浅灰，贯穿页面）
+  --apple-bg-fg:        #1d1d1f;   // 门户/深色前景区
+  --apple-surface:      #ffffff;   // 表面（卡片、面板）
+  --apple-surface-2:    #fbfbfd;   // 次级表面（嵌套卡片、悬停态）
+
+  // —— 文字 · Text
+  --apple-text:         #1d1d1f;   // 主文字
+  --apple-text-2:       #6e6e73;   // 次级文字（说明、label）
+  --apple-text-3:       #86868b;   // 三级文字（placeholder、辅助）
+  --apple-text-disabled:#d2d2d7;   // 禁用
+
+  // —— 主色 · Brand
+  --apple-brand:        #0071e3;   // 苹果蓝
+  --apple-brand-hover:  #0077ed;
+  --apple-brand-active: #006edb;
+  --apple-brand-tint:   #e8f1fd;   // 浅蓝（背景/选中态）
+
+  // —— 状态 · Status
+  --apple-success:      #34c759;
+  --apple-warning:      #ff9f0a;
+  --apple-danger:       #ff3b30;
+
+  // —— 分隔线 · Divider
+  --apple-divider:        #d2d2d7;
+  --apple-divider-soft:   rgba(0, 0, 0, 0.08);
+  --apple-divider-strong: rgba(0, 0, 0, 0.12);
+
+  // —— 渐变 · Gradient
+  --apple-gradient-brand: linear-gradient(135deg, #0071e3 0%, #7d7aff 100%);
+  --apple-gradient-glow:  radial-gradient(120% 80% at 50% 0%, rgba(125, 122, 255, 0.18) 0%, rgba(0, 113, 227, 0.06) 40%, rgba(255, 255, 255, 0) 70%);
+
+
+  // ---------------------------------------------------------------------------
+  // Radius · 圆角
+  // ---------------------------------------------------------------------------
+  --apple-radius-sm:   8px;
+  --apple-radius-md:   12px;
+  --apple-radius-lg:   16px;
+  --apple-radius-xl:   24px;
+  --apple-radius-2xl:  32px;
+  --apple-radius-full: 999px;   // 胶囊
+
+
+  // ---------------------------------------------------------------------------
+  // Shadow · 阴影（三级）
+  // ---------------------------------------------------------------------------
+  --apple-shadow-card:    0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --apple-shadow-raised:  0 2px 8px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.10);
+  --apple-shadow-overlay: 0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 16px rgba(0, 0, 0, 0.08);
+
+
+  // ---------------------------------------------------------------------------
+  // Typography · 字体
+  // ---------------------------------------------------------------------------
+  --apple-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+
+  --apple-font-size-xs:   12px;
+  --apple-font-size-sm:   14px;
+  --apple-font-size-base: 15px;
+  --apple-font-size-md:   17px;   // 苹果正文常用
+  --apple-font-size-lg:   20px;
+  --apple-font-size-xl:   28px;   // 区块标题
+  --apple-font-size-2xl:  40px;   // 页面大标题
+  --apple-font-size-3xl:  56px;   // Hero 标题
+
+  --apple-font-weight-regular:  400;
+  --apple-font-weight-medium:   500;
+  --apple-font-weight-semibold: 600;
+  --apple-font-weight-bold:     700;
+
+  --apple-line-height-tight:   1.15;
+  --apple-line-height-normal:  1.5;
+  --apple-line-height-relaxed: 1.7;
+
+
+  // ---------------------------------------------------------------------------
+  // Spacing · 间距（4 / 8 基准网格）
+  // ---------------------------------------------------------------------------
+  --apple-space-0:  0;
+  --apple-space-1:  4px;
+  --apple-space-2:  8px;
+  --apple-space-3:  12px;
+  --apple-space-4:  16px;
+  --apple-space-5:  20px;
+  --apple-space-6:  24px;
+  --apple-space-8:  32px;
+  --apple-space-10: 40px;
+  --apple-space-12: 48px;
+  --apple-space-16: 64px;
+
+
+  // ---------------------------------------------------------------------------
+  // Motion · 动效
+  // ---------------------------------------------------------------------------
+  --apple-duration-fast:   150ms;
+  --apple-duration-normal: 300ms;
+  --apple-duration-slow:   500ms;
+  --apple-duration-slower: 800ms;
+
+  --apple-ease-linear:      cubic-bezier(0, 0, 1, 1);
+  --apple-ease-standard:    cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-ease-out-elastic: cubic-bezier(0.32, 0.72, 0, 1);   // 苹果招牌 ease-out-quart
+
+
+  // ---------------------------------------------------------------------------
+  // Layout · 布局
+  // ---------------------------------------------------------------------------
+  --apple-container-max: 1200px;
+  --apple-container-padding-x: 40px;   // 页面左右 padding
+  --apple-header-height: 52px;
+  --apple-sidebar-width: 240px;
+
+
+  // ---------------------------------------------------------------------------
+  // Z-Index · 层级
+  // ---------------------------------------------------------------------------
+  --apple-z-dropdown: 100;
+  --apple-z-sticky:   200;
+  --apple-z-overlay:  1000;
+  --apple-z-modal:    1100;
+  --apple-z-toast:    1200;
+  --apple-z-tooltip:  1300;
+}
+
+
+// =============================================================================
+// 2) SCSS Variables —— 编译期 Token
+//    与 CSS 变量一一对应，使用时按需选用：编译期求值请用 $apple-*，需要
+//    主题切换 / 媒体查询动态覆盖请用 var(--apple-*)。
+// =============================================================================
+
+// —— 颜色 —— Color
+$apple-bg:            #f5f5f7;
+$apple-bg-fg:         #1d1d1f;
+$apple-surface:       #ffffff;
+$apple-surface-2:     #fbfbfd;
+
+$apple-text:          #1d1d1f;
+$apple-text-2:        #6e6e73;
+$apple-text-3:        #86868b;
+$apple-text-disabled: #d2d2d7;
+
+$apple-brand:         #0071e3;
+$apple-brand-hover:   #0077ed;
+$apple-brand-active:  #006edb;
+$apple-brand-tint:    #e8f1fd;
+
+$apple-success:       #34c759;
+$apple-warning:       #ff9f0a;
+$apple-danger:        #ff3b30;
+
+$apple-divider:        #d2d2d7;
+$apple-divider-soft:   rgba(0, 0, 0, 0.08);
+$apple-divider-strong: rgba(0, 0, 0, 0.12);
+
+// 兼容旧命名
+$color-primary:        $apple-brand;
+$color-primary-hover:  $apple-brand-hover;
+$color-primary-active: $apple-brand-active;
+$color-success:        $apple-success;
+$color-warning:        $apple-warning;
+$color-danger:         $apple-danger;
+$color-text-primary:   $apple-text;
+$color-text-regular:   $apple-text-2;
+$color-text-secondary: $apple-text-3;
+$color-text-placeholder: $apple-text-3;
+$color-border:         $apple-divider;
+
+// —— 圆角 —— Radius
+$apple-radius-sm:   8px;
+$apple-radius-md:   12px;
+$apple-radius-lg:   16px;
+$apple-radius-xl:   24px;
+$apple-radius-2xl:  32px;
+$apple-radius-full: 999px;
+
+// —— 阴影 —— Shadow
+$apple-shadow-card:    0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+$apple-shadow-raised:  0 2px 8px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.10);
+$apple-shadow-overlay: 0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 16px rgba(0, 0, 0, 0.08);
+
+// —— 字体 —— Typography
+$apple-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+
+$apple-font-size-xs:   12px;
+$apple-font-size-sm:   14px;
+$apple-font-size-base: 15px;
+$apple-font-size-md:   17px;
+$apple-font-size-lg:   20px;
+$apple-font-size-xl:   28px;
+$apple-font-size-2xl:  40px;
+$apple-font-size-3xl:  56px;
+
+$apple-font-weight-regular:  400;
+$apple-font-weight-medium:   500;
+$apple-font-weight-semibold: 600;
+$apple-font-weight-bold:     700;
+
+$apple-line-height-tight:   1.15;
+$apple-line-height-normal:  1.5;
+$apple-line-height-relaxed: 1.7;
+
+// —— 间距 —— Spacing
+$apple-space-0:  0;
+$apple-space-1:  4px;
+$apple-space-2:  8px;
+$apple-space-3:  12px;
+$apple-space-4:  16px;
+$apple-space-5:  20px;
+$apple-space-6:  24px;
+$apple-space-8:  32px;
+$apple-space-10: 40px;
+$apple-space-12: 48px;
+$apple-space-16: 64px;
+
+// —— 动效 —— Motion
+$apple-duration-fast:   150ms;
+$apple-duration-normal: 300ms;
+$apple-duration-slow:   500ms;
+$apple-duration-slower: 800ms;
+
+$apple-ease-linear:      cubic-bezier(0, 0, 1, 1);
+$apple-ease-standard:    cubic-bezier(0.4, 0, 0.2, 1);
+$apple-ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+$apple-ease-out-elastic: cubic-bezier(0.32, 0.72, 0, 1);
+
+// —— 布局 —— Layout
+$apple-container-max:       1200px;
+$apple-container-padding-x: 40px;
+$apple-header-height:       52px;
+$apple-sidebar-width:       240px;
+
+// —— Z-Index
+$apple-z-dropdown: 100;
+$apple-z-sticky:   200;
+$apple-z-overlay:  1000;
+$apple-z-modal:    1100;
+$apple-z-toast:    1200;
+$apple-z-tooltip:  1300;
+
+
+// =============================================================================
+// 3) Mixins —— 组合工具
+// =============================================================================
+
+// 毛玻璃（导航、抽屉顶部条）
+// 用法：@include apple-glass;
+@mixin apple-glass {
+  background-color: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid $apple-divider-soft;
+}
+
+// 悬浮卡片（白卡片 + 大圆角 + 悬浮阴影过渡）
+// 用法：@include apple-glow-card;
+@mixin apple-glow-card($radius: $apple-radius-lg) {
+  background-color: $apple-surface;
+  border-radius: $radius;
+  box-shadow: $apple-shadow-card;
+  transition: transform $apple-duration-normal $apple-ease-standard,
+              box-shadow $apple-duration-normal $apple-ease-standard;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $apple-shadow-raised;
+  }
+}
+
+// 可选：聚焦环（按钮/链接键盘 focus 时的苹果蓝环）
+@mixin apple-focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.24);
+  transition: box-shadow $apple-duration-fast $apple-ease-standard;
+}

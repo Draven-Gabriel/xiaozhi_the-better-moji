@@ -1,0 +1,184 @@
+<template>
+  <CustomDialog
+    :title="title"
+    :visible.sync="dialogVisible"
+    :close-on-click-modal="false"
+    width="600px"
+    @close="handleClose"
+    @open="handleOpen"
+    @cancel="handleCancel"
+    @confirm="handleSubmit"
+  >
+    <el-form ref="form" :model="form" :rules="rules" label-width="auto">
+      <el-form-item :label="$t('voiceClone.platformName')" prop="modelId">
+        <el-select v-model="form.modelId" :placeholder="$t('voiceClone.platformNamePlaceholder')" filterable
+          style="width: 100%" @change="handlePlatformChange">
+          <el-option v-for="model in platformList" :key="model.id" :label="model.modelName" :value="model.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <el-form-item :label="$t('voiceClone.voiceId')" prop="voiceIds">
+        <el-select v-model="form.voiceIds" :placeholder="$t('voiceClone.voiceIdPlaceholder')" filterable multiple
+          allow-create default-first-option style="width: 100%">
+          <el-option v-for="voiceId in voiceIdList" :key="voiceId" :label="voiceId" :value="voiceId">
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <el-form-item :label="$t('voiceClone.userId')" prop="userId">
+        <el-select v-model="form.userId" :placeholder="$t('voiceClone.userIdPlaceholder')" filterable remote
+          :remote-method="remoteSearchUser" :loading="userLoading" style="width: 100%">
+          <el-option v-for="user in userList" :key="user.userid" :label="user.mobile" :value="user.userid">
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <el-form-item :label="$t('voiceClone.languages')" prop="languages">
+        <el-input v-model="form.languages" :placeholder="$t('voiceClone.languagesPlaceholder')" style="width: 100%">
+        </el-input>
+      </el-form-item>
+    </el-form>
+  </CustomDialog>
+</template>
+
+<script>
+import Api from '@/apis/api';
+import CustomDialog from './CustomDialog.vue';
+
+export default {
+  name: 'VoiceCloneDialog',
+  components: { CustomDialog },
+  props: {
+    visible: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: ''
+    },
+    form: {
+      type: Object,
+      default: () => ({})
+    }
+  },
+
+  data() {
+    return {
+      dialogVisible: this.visible,
+      platformList: [],
+      voiceIdList: [],
+      userList: [],
+      userLoading: false,
+      rules: {
+        modelId: [
+          { required: true, message: this.$t('voiceClone.platformNameRequired'), trigger: 'change' }
+        ],
+        voiceIds: [
+          { required: true, message: this.$t('voiceClone.voiceIdRequired'), trigger: 'change' }
+        ],
+        userId: [
+          { required: true, message: this.$t('voiceClone.userIdRequired'), trigger: 'change' }
+        ],
+        languages: [
+          { required: true, message: this.$t('voiceClone.languagesRequired'), trigger: 'blur' }
+        ]
+      }
+    }
+  },
+
+  watch: {
+    visible(val) {
+      this.dialogVisible = val;
+    },
+    dialogVisible(val) {
+      this.$emit('update:visible', val);
+    }
+  },
+
+  methods: {
+    handleClose() {
+      this.dialogVisible = false;
+      this.$emit('cancel');
+    },
+
+    handleCancel() {
+      this.$refs.form.clearValidate();
+      this.$emit('cancel');
+    },
+
+    handleSubmit() {
+      this.$refs.form.validate(valid => {
+        if (valid) {
+          this.$emit('submit', this.form);
+        }
+      });
+    },
+
+    handleOpen() {
+      // 对话框打开时加载平台列表
+      this.fetchPlatformList();
+      // 重置音色ID列表
+      this.voiceIdList = [];
+    },
+
+    handlePlatformChange(modelId) {
+      // 清空音色ID选择
+      this.form.voiceIds = [];
+    },
+
+    // 获取TTS平台列表
+    fetchPlatformList() {
+      Api.voiceResource.getTtsPlatformList((res) => {
+        if (res.data.code === 0) {
+          this.platformList = res.data.data;
+        }
+      });
+    },
+
+    // 远程搜索用户
+    remoteSearchUser(query) {
+      if (query !== '') {
+        this.userLoading = true;
+        const params = {
+          page: 1,
+          limit: 20,
+          mobile: query
+        };
+        Api.admin.getUserList(params, (res) => {
+          this.userLoading = false;
+          if (res.data.code === 0) {
+            this.userList = res.data.data.list;
+          }
+        });
+      } else {
+        this.userList = [];
+      }
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+::v-deep .el-input__inner {
+  background-color: var(--apple-surface-2);
+  border-radius: var(--apple-radius-md);
+  border: 1px solid transparent;
+  color: var(--apple-text);
+  transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+}
+::v-deep .el-input__inner:focus {
+  border-color: var(--apple-brand);
+  background-color: var(--apple-surface);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.24);
+}
+::v-deep .el-input__inner::placeholder {
+  color: var(--apple-text-3);
+}
+
+::v-deep .el-form-item__label {
+  color: var(--apple-text);
+  font-weight: var(--apple-font-weight-medium);
+}
+</style>

@@ -1,0 +1,19 @@
+﻿# 排除：大体积/运行时/参考内容（不进 git，不推 GitHub）
+cache/
+backup/
+data/
+tmp/
+theme-preview/
+_tmp_png/
+新版前端/node_modules/
+xiaozhi-esp32-server-main/main/xiaozhi-server/models/
+xiaozhi-esp32-server-main/main/xiaozhi-server/mysql/
+xiaozhi-esp32-server-main/main/xiaozhi-server/music/
+xiaozhi-esp32-server-main/main/xiaozhi-server/tmp/
+xiaozhi-esp32-server-main/main/xiaozhi-server/data/
+xiaozhi-esp32/build/
+xiaozhi-esp32/managed_components/
+xiaozhi-esp32/sdkconfig
+xiaozhi-esp32/dependencies.lock
+*.zip
+.DS_Store

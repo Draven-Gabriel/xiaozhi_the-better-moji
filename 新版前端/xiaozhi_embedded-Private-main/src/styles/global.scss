@@ -1,0 +1,121 @@
+// 全局 Aurora 背景：页面根容器浮动在光效层之上并通过半透明背景透出光斑
+#app > .welcome {
+  position: relative;
+  z-index: 1;
+  background-color: rgba(245, 245, 247, 0.76) !important;
+}
+
+#app > .ap-login-page {
+  position: relative;
+  z-index: 1;
+}
+
+#app > .doc-section {
+  position: relative;
+  z-index: 1;
+  background-color: rgba(255, 255, 255, 0.84) !important;
+}
+
+// 覆盖 autofill 样式
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset;
+  transition: background-color 5000s ease-in-out 0s;
+  background-color: transparent;
+}
+
+.el-footer {
+  height: 35px !important; /* 使用 !important 确保覆盖默认样式 */
+}
+
+.el-icon-video-play, .el-icon-video-pause {
+  font-size: 18px !important;
+}
+
+.is-light {
+  border: 1px solid #e4e7ed !important;
+  color: #595959;
+  font-size: 14px;
+  background: #fafcfe !important;
+  .popper__arrow {
+    border-top-color: #e4e7ed !important;
+   }
+}
+
+@mixin scrollbar-style {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #a1c9fd;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f0f3fe;
+    border-radius: 3px;
+  }
+}
+
+.el-card {
+  border-radius: var(--apple-radius-lg);
+  border-color: var(--apple-divider-soft);
+  background-color: var(--apple-surface);
+  box-shadow: var(--apple-shadow-card);
+  transition:
+    box-shadow var(--apple-duration-fast) var(--apple-ease-standard),
+    transform var(--apple-duration-fast) var(--apple-ease-standard);
+}
+
+.el-dialog,
+.el-dialog__wrapper .el-dialog {
+  border-radius: var(--apple-radius-lg);
+}
+
+.el-dialog__wrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.el-dialog__wrapper .el-dialog {
+  margin: auto !important;
+}
+
+.brand-gradient-text {
+  background-image: linear-gradient(
+    120deg,
+    var(--apple-brand) 0%,
+    #7d7aff 50%,
+    var(--apple-brand) 100%
+  );
+  background-size: 250% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: brand-gradient-flow 5s ease-in-out infinite;
+}
+
+@keyframes brand-gradient-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-gradient-text {
+    animation: none;
+  }
+}

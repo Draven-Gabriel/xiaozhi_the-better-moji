@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XiaoZhi 烧录与操控平台</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="openWarning" class="alert warn" style="display:none">
+    检测到你是直接双击打开的 <code>index.html</code>，浏览器会拦截模块脚本导致页面卡住。
+    请关闭本页，运行 <code>start.ps1</code>（或 <code>python -m http.server 8011</code>），
+    然后打开 <code>http://localhost:8011</code>。
+  </div>
+  <header class="topbar">
+    <div class="brand">
+      <h1>XiaoZhi 烧录与操控平台</h1>
+      <p>ElectronBot 对话版 · ESP32-S3 · 无头无手脚</p>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="flash">烧录</button>
+      <button class="tab" data-tab="control">操控</button>
+      <button class="tab" data-tab="monitor">串口监视</button>
+      <button class="tab" data-tab="help">使用说明</button>
+    </nav>
+  </header>
+
+  <main>
+      <div class="card">
+        <h2>操作授权</h2>
+      <label class="field">
+        <span>操作确认模式</span>
+        <select id="permissionMode">
+          <option value="ask" selected>每次操作都确认（推荐）</option>
+          <option value="danger">仅高危操作确认（重启等）</option>
+          <option value="off">不确认（不推荐）</option>
+        </select>
+      </label>
+      <p class="hint">
+        状态查询类操作（状态、电量、IP、系统信息）自动放行；重启、音量/亮度、屏幕预览以及所有控制类工具，执行前都会弹出确认框，必须点“允许”才会执行。
+      </p>
+    </div>
+
+    <!-- ==================== 烧录 ==================== -->
+    <section id="flash" class="panel active">
+      <div class="card">
+        <h2>烧录固件</h2>
+        <p>直接使用乐鑫官方在线烧录工具 <strong>ESP Launchpad</strong>，不在平台里重复做烧录器：</p>
+        <p>
+          <a class="btn primary" href="https://espressif.github.io/esp-launchpad/" target="_blank" rel="noopener">
+            打开 ESP Launchpad →
+          </a>
+        </p>
+        <p class="hint">
+          用 Chrome/Edge 打开；设备用数据线连接电脑后，在 ESP Launchpad 里选择
+          <code>merged-binary.bin</code>（从 <code>0x0</code> 写入）并点击烧录。
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================== 操控 ==================== -->
+    <section id="control" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h2>连接设备</h2>
+          <label class="field">
+            <span>设备 IP</span>
+            <input id="deviceIp" type="text" placeholder="例如 192.168.1.100">
+          </label>
+          <label class="field">
+            <span>端口</span>
+            <input id="devicePort" type="number" value="8080">
+          </label>
+          <div class="row">
+            <button id="ctrlConnect" class="primary">连接</button>
+            <button id="ctrlDisconnect" class="ghost" disabled>断开</button>
+          </div>
+          <div class="status-line">
+            WebSocket 状态：<span id="wsStatus" class="badge bad">未连接</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>设备状态</h2>
+          <div class="row">
+            <button id="refreshStatus" class="primary" disabled>刷新状态</button>
+          </div>
+          <div id="statusCards" class="status-cards"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>快捷控制</h2>
+        <div class="quick-grid">
+          <div class="quick-item">
+            <label>音量 <output id="volumeValue">50</output></label>
+            <input id="volumeSlider" type="range" min="0" max="100" value="50">
+            <button id="setVolume" class="primary" disabled>设置音量</button>
+          </div>
+          <div class="quick-item">
+            <label>屏幕亮度 <output id="brightnessValue">80</output></label>
+            <input id="brightnessSlider" type="range" min="0" max="100" value="80">
+            <button id="setBrightness" class="primary" disabled>设置亮度</button>
+          </div>
+          <div class="quick-item">
+            <label>屏幕主题</label>
+            <select id="themeSelect">
+              <option value="light">light</option>
+              <option value="dark">dark</option>
+            </select>
+            <button id="setTheme" class="primary" disabled>设置主题</button>
+          </div>
+          <div class="quick-item">
+            <label>屏幕预览图片 URL</label>
+            <input id="previewUrl" type="text" placeholder="http://.../image.jpg">
+            <button id="previewImage" class="primary" disabled>显示到屏幕</button>
+          </div>
+          <div class="quick-item">
+            <label>系统</label>
+            <button id="systemInfoBtn" class="ghost" disabled>系统信息</button>
+            <button id="rebootBtn" class="danger" disabled>重启设备</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>工具列表（固件自动上报）</h2>
+          <div class="tool-filters">
+            <input id="toolSearch" type="search" placeholder="搜索工具名称...">
+            <label class="check">
+              <input type="checkbox" id="hideServo" checked>
+              <span>隐藏舵机/机器人动作工具（无头无手脚设备）</span>
+            </label>
+          </div>
+        </div>
+        <div id="toolList" class="tool-list">
+          <p class="hint">连接设备后自动加载工具列表。</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>原始 JSON-RPC 消息</h2>
+        <textarea id="rawJson" rows="4" spellcheck="false">{"jsonrpc":"2.0","method":"tools/call","params":{"name":"self.electron.get_ip","arguments":{}},"id":1}</textarea>
+        <button id="rawSend" class="primary" disabled>发送</button>
+      </div>
+
+      <div class="card">
+        <h2>响应日志</h2>
+        <pre id="controlLog" class="log"></pre>
+      </div>
+    </section>
+
+    <!-- ==================== 串口监视 ==================== -->
+    <section id="monitor" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h2>串口连接</h2>
+          <label class="field">
+            <span>波特率</span>
+            <select id="monBaud">
+              <option value="115200" selected>115200</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </label>
+          <div class="row">
+            <button id="monConnect" class="primary">连接串口</button>
+            <button id="monDisconnect" class="ghost" disabled>断开</button>
+          </div>
+          <p class="hint">注意：烧录时串口被占用，需先断开烧录连接再打开监视器。</p>
+        </div>
+        <div class="card">
+          <h2>输出控制</h2>
+          <div class="row">
+            <button id="monStart" class="primary" disabled>开始读取</button>
+            <button id="monStop" class="ghost" disabled>停止读取</button>
+            <button id="monClear" class="ghost">清空</button>
+          </div>
+          <div class="row">
+            <input id="monSendInput" type="text" placeholder="发送一行内容（回车）">
+            <button id="monSend" class="primary" disabled>发送</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>输出</h2>
+        <pre id="monOutput" class="log"></pre>
+      </div>
+    </section>
+
+    <!-- ==================== 使用说明 ==================== -->
+    <section id="help" class="panel">
+      <div class="card">
+        <h2>你的设备确认</h2>
+        <p>按你给的引脚（麦克风 40/42/41，喇叭 17/18/8，屏幕 11/10/12/13/9，背光 46、BOOT 0、充电检测 14），固件仓库里对应的板型就是 <code>electron-bot</code>。即使你的外壳没有头和手脚，PCB 仍是这一款，直接用这个板型编译即可。</p>
+        <p>硬件层的 C/C++ 代码（屏幕、麦克风、喇叭、电池、背光）仓库里已经全部实现，<strong>你不需要再写引脚操控部分</strong>。你负责：确认板型、编译/烧录、验证硬件、做操控平台；伙伴负责 WiFi 连接后的 agent，通过 MCP 工具调用硬件能力。</p>
+      </div>
+
+      <div class="card">
+        <h2>1. 编译固件（伙伴或本地）</h2>
+        <p>在 ESP-IDF v6.0.2 环境下执行：</p>
+        <pre><code>python scripts/build.py electron-bot --name electron-bot</code></pre>
+        <p>产物在 <code>build/merged-binary.bin</code>。也可以用 <code>idf.py menuconfig</code> 修改 <code>CONFIG_OTA_URL</code> 后 <code>idf.py build</code>。</p>
+      </div>
+
+      <div class="card">
+        <h2>2. 启动平台</h2>
+        <p>在 <code>platform/</code> 目录下运行：</p>
+        <pre><code>python -m http.server 8011</code></pre>
+        <p>然后用 <strong>Chrome 或 Edge</strong> 打开 <code>http://localhost:8011</code>。Web Serial 只在这两个浏览器且必须是 HTTPS 或 localhost 下可用。</p>
+        <p class="hint">如果你机器上 8000 端口已被其他服务占用（比如另一个 Python 服务），请用 8011 或直接运行 <code>start.ps1</code> 自动选端口。不要直接双击 index.html，浏览器会拦截模块脚本导致页面卡住。</p>
+      </div>
+
+      <div class="card">
+        <h2>3. 烧录</h2>
+        <ol>
+          <li>设备用支持数据传输的 USB 线连接电脑，确认系统出现新的 COM 口（之前的 COM6/COM7 是蓝牙串口，不是 ESP32）。</li>
+          <li>打开 <a href="https://espressif.github.io/esp-launchpad/" target="_blank" rel="noopener">ESP Launchpad</a>。</li>
+          <li>选择 <code>merged-binary.bin</code>，从 <code>0x0</code> 写入，点击烧录。</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>4. 配网与操控</h2>
+        <ol>
+          <li>设备首次启动会进入配网热点，手机连上后配置 WiFi。</li>
+          <li>在路由器后台或设备日志里找到设备 IP。</li>
+          <li>进入“操控”页，填入 IP（端口 8080），点“连接”，即可看到固件上报的全部 MCP 工具。</li>
+          <li>音量、亮度、主题、状态查询已做成快捷按钮；其余工具按表单填写后调用。</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>5. 切换到你自己的服务器</h2>
+        <ol>
+          <li>先部署 <code>xiaozhi-esp32-server</code>（Docker 或源码），确认 OTA 接口 <code>http://主机IP:8002/xiaozhi/ota/</code> 和 WebSocket <code>ws://主机IP:8000/xiaozhi/v1/</code> 可用。</li>
+          <li>在服务器管理后台的“固件配置”里填写固件 <code>type=electron-bot</code>、<code>name=electron-bot</code>。</li>
+          <li>设备配网页的“高级选项”中把 OTA 地址改成你的服务器，重启设备，激活流程会下发新的 MQTT/WebSocket 配置。</li>
+        </ol>
+      </div>
+    </section>
+
+    <div class="card">
+      <h2>关于操作权限</h2>
+      <p>本平台默认每次控制类操作都会弹出确认框，点“允许”才会执行；状态查询自动放行。烧录走官方 ESP Launchpad，不经过本平台。</p>
+      <p class="hint">如果伙伴的 AI agent 要通过服务器控制设备，需要在服务器端单独做权限/审批，网页确认框管不到那条链路。</p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      if (location.protocol === "file:") {
+        var el = document.getElementById("openWarning");
+        if (el) el.style.display = "block";
+      }
+    })();
+  </script>
+  <div id="approveModal" class="modal-mask" style="display:none">
+    <div class="modal">
+      <h3 id="approveTitle">操作确认</h3>
+      <pre id="approveDetail" class="approve-detail"></pre>
+      <label class="check">
+        <input type="checkbox" id="approveRemember">
+        <span>本会话内不再询问同类操作</span>
+      </label>
+      <div class="row">
+        <button id="approveAllow" class="primary">允许本次操作</button>
+        <button id="approveDeny" class="ghost">拒绝</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

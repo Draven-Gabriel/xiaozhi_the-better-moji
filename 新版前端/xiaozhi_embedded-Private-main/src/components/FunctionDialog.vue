@@ -1,0 +1,980 @@
+<template>
+  <el-drawer :visible.sync="dialogVisible" direction="rtl" size="80%" :wrapperClosable="false" :withHeader="false">
+    <!-- 自定义标题区域 -->
+    <div class="custom-header">
+      <div class="header-left">
+        <h3 class="bold-title">{{ $t('functionDialog.title') }}</h3>
+      </div>
+      <button class="custom-close-btn" @click="closeDialog">×</button>
+    </div>
+
+    <div class="function-manager">
+      <!-- 左侧：未选功能 -->
+      <div class="function-column">
+        <div class="column-header">
+          <h4 class="column-title">{{ $t('functionDialog.unselectedFunctions') }}</h4>
+          <el-button type="text" @click="selectAll" class="select-all-btn">
+            {{ $t('functionDialog.selectAll') }}
+          </el-button>
+        </div>
+        <div class="function-list">
+          <div v-if="unselected.length">
+            <div v-for="func in unselected" :key="func.name" class="function-item">
+              <el-checkbox :label="func.name" v-model="selectedNames" @change="(val) => handleCheckboxChange(func, val)"
+                @click.native.stop></el-checkbox>
+              <div class="func-tag" @click="handleFunctionClick(func)">
+                <div class="color-dot"></div>
+                <span>{{ func.name }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else style="display: flex; justify-content: center; align-items: center;">
+            <el-empty :description="$t('functionDialog.noMorePlugins')" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间：已选功能 -->
+      <div class="function-column">
+        <div class="column-header">
+          <h4 class="column-title">{{ $t('functionDialog.selectedFunctions') }}</h4>
+          <el-button type="text" @click="deselectAll" class="select-all-btn">
+            {{ $t('functionDialog.selectAll') }}
+          </el-button>
+        </div>
+        <div class="function-list">
+          <div v-if="selectedList.length > 0">
+            <div v-for="func in selectedList" :key="func.name" class="function-item">
+              <el-checkbox :label="func.name" v-model="selectedNames" @change="(val) => handleCheckboxChange(func, val)"
+                @click.native.stop></el-checkbox>
+              <div class="func-tag" @click="handleFunctionClick(func)">
+                <div class="color-dot"></div>
+                <span>{{ func.name }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else style="display: flex; justify-content: center; align-items: center;">
+            <el-empty :description="$t('functionDialog.pleaseSelectPlugin')" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：参数配置 -->
+      <div class="params-column">
+        <h4 v-if="currentFunction" class="column-title">
+          {{ $t('functionDialog.paramConfig') }} - {{ currentFunction.name }}
+        </h4>
+        <div v-if="currentFunction" class="params-container">
+          <el-form :model="currentFunction" class="param-form">
+            <!-- 遍历 fieldsMeta，而不是 params 的 keys -->
+            <div v-if="currentFunction.fieldsMeta.length == 0">
+              <el-empty :description="currentFunction.name + $t('functionDialog.noNeedToConfig')" />
+            </div>
+            <el-form-item v-for="field in currentFunction.fieldsMeta" :key="field.key" :label="field.label"
+              class="param-item" :class="{ 'textarea-field': field.type === 'array' || field.type === 'json' }">
+              <template #label>
+                <span style="font-size: 16px; margin-right: 6px;">{{ field.label }}</span>
+                <el-tooltip effect="dark" :content="fieldRemark(field)" placement="top">
+                  <img src="@/assets/home/info.png" alt="" class="info-icon">
+                </el-tooltip>
+              </template>
+              <!-- ARRAY -->
+              <el-input v-if="field.type === 'array'" type="textarea" v-model="currentFunction.params[field.key]"
+                @change="val => handleParamChange(currentFunction, field.key, val)" />
+
+              <!-- JSON -->
+              <el-input v-else-if="field.type === 'json'" type="textarea" :rows="6" placeholder="请输入合法的 JSON"
+                v-model="textCache[field.key]" @blur="flushJson(field)" />
+
+              <!-- number -->
+              <el-input-number v-else-if="field.type === 'number'" :value="currentFunction.params[field.key]"
+                @change="val => handleParamChange(currentFunction, field.key, val)" />
+
+              <!-- boolean -->
+              <el-switch v-else-if="field.type === 'boolean' || field.type === 'bool'"
+                :value="currentFunction.params[field.key]"
+                @change="val => handleParamChange(currentFunction, field.key, val)" />
+
+              <!-- string or fallback -->
+              <el-input v-else v-model="currentFunction.params[field.key]"
+                @change="val => handleParamChange(currentFunction, field.key, val)" />
+            </el-form-item>
+          </el-form>
+        </div>
+        <div v-else class="empty-tip">{{ $t('functionDialog.pleaseSelectFunctionForParam') }}</div>
+      </div>
+    </div>
+
+    <!-- MCP区域 -->
+    <div class="mcp-access-point" v-if="featureStatus.mcpAccessPoint">
+      <div class="mcp-container">
+        <!-- 左侧区域 -->
+        <div class="mcp-left">
+          <div class="mcp-header">
+            <h3 class="bold-title">{{ $t('functionDialog.mcpAccessPoint') }}</h3>
+          </div>
+          <div class="url-header">
+            <div class="address-desc">
+              <span>{{ $t('functionDialog.mcpAddressDesc') }}</span>
+              <a href="https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-enable.md"
+                target="_blank" class="doc-link">{{ $t('functionDialog.howToDeployMcp') }}</a> &nbsp;&nbsp;|&nbsp;&nbsp;
+              <a href="https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-integration.md"
+                target="_blank" class="doc-link">{{ $t('functionDialog.howToIntegrateMcp') }}</a> &nbsp;
+            </div>
+          </div>
+          <el-input v-model="mcpUrl" readonly class="url-input">
+            <template #suffix>
+              <el-button @click="copyUrl" class="inner-copy-btn" icon="el-icon-document-copy">
+                {{ $t('functionDialog.copy') }}
+              </el-button>
+            </template>
+          </el-input>
+        </div>
+
+        <!-- 右侧区域 -->
+        <div class="mcp-right">
+          <div class="mcp-header">
+            <h3 class="bold-title">{{ $t('functionDialog.accessPointStatus') }}</h3>
+          </div>
+          <div class="status-container">
+            <span class="status-indicator" :class="mcpStatus"></span>
+            <span class="status-text">{{
+              mcpStatus === 'connected' ? $t('functionDialog.connected') :
+                mcpStatus === 'loading' ? $t('functionDialog.loading') : $t('functionDialog.disconnected')
+            }}</span>
+            <button class="refresh-btn" @click="refreshStatus">
+              <span class="refresh-icon">↻</span>
+              <span>{{ $t('functionDialog.refresh') }}</span>
+            </button>
+          </div>
+          <div class="mcp-tools-list">
+            <div v-if="mcpTools.length > 0" class="tools-grid">
+              <el-button v-for="tool in mcpTools" :key="tool" size="small" class="tool-btn" plain>
+                {{ tool }}
+              </el-button>
+            </div>
+            <div v-else class="no-tools">
+              <span>{{ $t('functionDialog.noAvailableTools') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-footer">
+      <el-button @click="closeDialog">{{ $t('functionDialog.cancel') }}</el-button>
+      <el-button type="primary" @click="saveSelection">{{ $t('functionDialog.saveConfig') }}</el-button>
+    </div>
+  </el-drawer>
+</template>
+
+<script>
+import Api from '@/apis/api';
+import i18n from '@/i18n';
+import featureManager from '@/utils/featureManager';
+
+export default {
+  i18n,
+
+  props: {
+    value: Boolean,
+    functions: {
+      type: Array,
+      default: () => []
+    },
+    allFunctions: {
+      type: Array,
+      default: () => []
+    },
+    agentId: {
+      type: String,
+      required: true
+    }
+  },
+  data() {
+    return {
+      textCache: {},
+      dialogVisible: this.value,
+      selectedNames: [],
+      currentFunction: null,
+      modifiedFunctions: {},
+      tempFunctions: {},
+      // 添加一个标志位来跟踪是否已经保存
+      hasSaved: false,
+      loading: false,
+
+      mcpUrl: "",
+      mcpStatus: "disconnected",
+      mcpTools: [],
+      
+      // 功能状态
+      featureStatus: {
+        mcpAccessPoint: false,
+        addressBook: false
+      }
+    }
+  },
+  computed: {
+    selectedList() {
+      const list = this.allFunctions.filter(f => this.selectedNames.includes(f.name));
+      // 如果通讯录功能未启用，过滤掉设备呼叫设备插件
+      if (!this.featureStatus.addressBook) {
+        return list.filter(f => f.providerCode !== 'call_device');
+      }
+      return list;
+    },
+    unselected() {
+      const list = this.allFunctions.filter(f => !this.selectedNames.includes(f.name));
+      // 如果通讯录功能未启用，过滤掉设备呼叫设备插件
+      if (!this.featureStatus.addressBook) {
+        return list.filter(f => f.providerCode !== 'call_device');
+      }
+      return list;
+    }
+  },
+  watch: {
+    currentFunction(newFn) {
+      if (!newFn) return;
+      // 对每个字段，如果是 array 或 json，就在 textCache 里生成初始字符串
+      newFn.fieldsMeta.forEach(f => {
+        const v = newFn.params[f.key];
+        if (f.type === 'array') {
+          this.$set(this.textCache, f.key, Array.isArray(v) ? v.join('\n') : '');
+        }
+        else if (f.type === 'json') {
+          try {
+            this.$set(this.textCache, f.key, JSON.stringify(v ?? {}, null, 2));
+          } catch {
+            this.$set(this.textCache, f.key, '');
+          }
+        }
+      });
+    },
+    async value(v) {
+      this.dialogVisible = v;
+      if (v) {
+        // 加载功能状态（需要在初始化选中态之前）
+        await this.loadFeatureStatus();
+
+        // 对话框打开时，初始化选中态
+        this.selectedNames = this.functions.map(f => f.name);
+
+        // 如果通讯录功能未启用，从已选列表中移除设备呼叫设备插件
+        if (!this.featureStatus.addressBook) {
+          this.selectedNames = this.selectedNames.filter(name => {
+            const func = this.allFunctions.find(f => f.name === name);
+            return func && func.providerCode !== 'call_device';
+          });
+        }
+
+        // 把后端传来的 this.functions（带 params）merge 到 allFunctions 上
+        this.functions.forEach(saved => {
+          const idx = this.allFunctions.findIndex(f => f.name === saved.name);
+          if (idx >= 0) {
+            // 保留用户之前在 saved.params 上的改动
+            this.allFunctions[idx].params = { ...saved.params };
+          }
+        });
+        // 右侧默认指向第一个
+        this.currentFunction = this.selectedList[0] || null;
+
+        // 加载MCP数据
+        this.loadMcpAddress();
+        this.loadMcpTools();
+      }
+    },
+    dialogVisible(newVal) {
+      this.$emit('input', newVal);
+    }
+  },
+  methods: {
+    /**
+     * 加载功能状态
+     */
+    async loadFeatureStatus() {
+      // 确保featureManager已初始化完成
+      await featureManager.waitForInitialization();
+
+      const config = featureManager.getConfig();
+      this.featureStatus = {
+        mcpAccessPoint: config.mcpAccessPoint || false,
+        addressBook: config.addressBook || false
+      };
+    },
+    
+    copyUrl() {
+      const textarea = document.createElement('textarea');
+      textarea.value = this.mcpUrl;
+      textarea.style.position = 'fixed';  // 防止页面滚动
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          this.$message.success(this.$t('functionDialog.copiedToClipboard'));
+        } else {
+          this.$message.error(this.$t('functionDialog.copyFailed'));
+        }
+      } catch (err) {
+        this.$message.error('复制失败，请手动复制');
+        console.error('复制失败:', err);
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    },
+
+    refreshStatus() {
+      this.mcpStatus = "loading";
+      this.loadMcpTools();
+    },
+
+    // 加载MCP接入点地址
+    loadMcpAddress() {
+      Api.agent.getAgentMcpAccessAddress(this.agentId, (res) => {
+        if (res.data.code === 0) {
+          this.mcpUrl = res.data.data || "";
+        } else {
+          this.mcpUrl = res.data.msg;
+          console.error('获取MCP地址失败:', res.data.msg);
+        }
+      });
+    },
+
+    // 加载MCP工具列表
+    loadMcpTools() {
+      Api.agent.getAgentMcpToolsList(this.agentId, (res) => {
+        if (res.data.code === 0) {
+          this.mcpTools = res.data.data || [];
+          // 根据工具列表更新状态
+          this.mcpStatus = this.mcpTools.length > 0 ? "connected" : "disconnected";
+        } else {
+          this.mcpTools = [];
+          this.mcpStatus = "disconnected";
+          console.error('获取MCP工具列表失败:', res.data.msg);
+        }
+      });
+    },
+
+    flushArray(key) {
+      const text = this.textCache[key] || '';
+      const arr = text
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+      this.handleParamChange(this.currentFunction, key, arr);
+    },
+
+    flushJson(field) {
+      const key = field.key;
+      if (!key) {
+        return;
+      }
+      const text = this.textCache[key] || '';
+      try {
+        const obj = JSON.parse(text);
+        this.handleParamChange(this.currentFunction, key, obj);
+      } catch {
+        this.$message.error(`${this.currentFunction.name}${this.$t('functionDialog.jsonFormatError')}`);
+      }
+    },
+    handleFunctionClick(func) {
+      if (this.selectedNames.includes(func.name)) {
+        const tempFunc = this.tempFunctions[func.name];
+        this.currentFunction = tempFunc ? tempFunc : func;
+      }
+    },
+    handleParamChange(func, key, value) {
+      if (!this.tempFunctions[func.name]) {
+        this.tempFunctions[func.name] = JSON.parse(JSON.stringify(func));
+      }
+      this.tempFunctions[func.name].params[key] = value;
+    },
+    handleCheckboxChange(func, checked) {
+      if (checked) {
+        if (!this.selectedNames.includes(func.name)) {
+          this.selectedNames = [...this.selectedNames, func.name];
+        }
+      } else {
+        this.selectedNames = this.selectedNames.filter(name => name !== func.name);
+      }
+
+      if (this.selectedList.length > 0) {
+        this.currentFunction = this.selectedList[0];
+      } else {
+        this.currentFunction = null;
+      }
+    },
+
+    selectAll() {
+      this.selectedNames = [...this.allFunctions.map(f => f.name)];
+      if (this.selectedList.length > 0) {
+        this.currentFunction = JSON.parse(JSON.stringify(this.selectedList[0]));
+      }
+    },
+
+    deselectAll() {
+      this.selectedNames = [];
+      this.currentFunction = null;
+    },
+
+    closeDialog() {
+      this.tempFunctions = {};
+      this.selectedNames = this.functions.map(f => f.name);
+      this.currentFunction = null;
+      this.dialogVisible = false;
+      this.$emit('input', false);
+      this.$emit('dialog-closed', false);
+    },
+
+    saveSelection() {
+      Object.keys(this.tempFunctions).forEach(name => {
+        this.modifiedFunctions[name] = JSON.parse(JSON.stringify(this.tempFunctions[name]));
+      });
+      this.tempFunctions = {};
+      this.hasSaved = true;
+
+      let selected = this.selectedList.map(f => {
+        const modified = this.modifiedFunctions[f.name];
+        return {
+          id: f.id,
+          name: f.name,
+          params: modified
+            ? { ...modified.params }
+            : { ...f.params }
+        }
+      });
+
+      // 如果通讯录功能未启用，自动取消已选的设备呼叫设备插件
+      if (!this.featureStatus.addressBook) {
+        selected = selected.filter(f => f.providerCode !== 'call_device');
+      }
+
+      this.$emit('update-functions', selected);
+      this.dialogVisible = false;
+      // 通知父组件对话框已关闭且已保存
+      this.$emit('dialog-closed', true);
+    },
+    fieldRemark(field) {
+      let description = (field && field.label) ? field.label : '';
+      if (field.default) {
+        description += `（${this.$t('functionDialog.defaultValue')}：${field.default}）`;
+      }
+      return description;
+    },
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.function-manager {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 12px;
+  height: calc(58vh);
+}
+
+.custom-header {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--apple-divider-soft);
+  background-color: var(--apple-surface);
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bold-title {
+    font-size: var(--apple-font-size-md);
+    font-weight: var(--apple-font-weight-semibold);
+    margin: 0;
+    color: var(--apple-text);
+  }
+
+  .select-all-btn {
+    padding: 0;
+    height: auto;
+    font-size: 14px;
+    color: var(--apple-brand);
+
+    &:hover {
+      color: var(--apple-brand-hover);
+    }
+  }
+}
+
+.function-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  height: 100%; 
+  padding: 10px;
+  border-right: 1px solid var(--apple-divider-soft);
+  scrollbar-width: none;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.mcp-access-point {
+  position: relative;
+  z-index: 1;
+  background: var(--apple-surface);
+}
+
+.function-column::-webkit-scrollbar {
+  display: none;
+}
+
+.function-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.function-item {
+  padding: 8px 12px;
+  margin: 4px 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--apple-radius-sm);
+  transition: background-color var(--apple-duration-fast) var(--apple-ease-standard);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  &:hover {
+    background-color: var(--apple-surface-2);
+  }
+}
+
+.params-column {
+  min-width: 280px;
+  padding: 10px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.params-column::-webkit-scrollbar {
+  display: none;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.column-title {
+  text-align: center;
+  width: 100%;
+  color: var(--apple-text);
+  font-weight: var(--apple-font-weight-semibold);
+}
+
+.func-tag {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-grow: 1;
+  margin-left: 8px;
+  color: var(--apple-text);
+}
+
+.color-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background-color: var(--apple-brand);
+  margin-right: 8px;
+  border-radius: 50%;
+}
+
+.param-form {
+  .param-item {
+    font-size: 16px;
+
+    &.textarea-field {
+      ::v-deep .el-form-item__content {
+        margin-left: 0 !important;
+        display: block;
+        width: 100%;
+      }
+
+      ::v-deep .el-form-item__label {
+        display: block;
+        width: 100% !important;
+        margin-bottom: 8px;
+      }
+    }
+  }
+
+  .param-input {
+    width: 100%;
+  }
+
+  ::v-deep .el-form-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+
+    .el-form-item__label {
+      font-size: 14px !important;
+      color: var(--apple-text);
+      font-weight: var(--apple-font-weight-medium);
+      text-align: left;
+      padding-right: 10px;
+      flex-shrink: 0;
+      width: auto !important;
+    }
+
+    .el-form-item__content {
+      margin-left: 0 !important;
+      flex-grow: 1;
+
+      .el-input__inner {
+        text-align: left;
+        padding-left: 8px;
+        width: 100%;
+        background-color: var(--apple-surface-2);
+        border-radius: var(--apple-radius-sm);
+        border: 1px solid transparent;
+        color: var(--apple-text);
+        transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+      }
+
+      .el-textarea__inner {
+        background-color: var(--apple-surface-2);
+        border-radius: var(--apple-radius-sm);
+        border: 1px solid transparent;
+        color: var(--apple-text);
+        transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+      }
+
+      .el-input__inner:focus {
+        border-color: var(--apple-brand);
+        background-color: var(--apple-surface);
+        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.24);
+      }
+
+      .el-textarea__inner:focus {
+        border-color: var(--apple-brand);
+        background-color: var(--apple-surface);
+        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.24);
+      }
+    }
+  }
+
+  ::v-deep .el-switch__core {
+    border-radius: var(--apple-radius-full);
+    border-color: var(--apple-divider);
+    background-color: var(--apple-divider);
+  }
+
+  ::v-deep .el-switch.is-checked .el-switch__core {
+    border-color: var(--apple-brand);
+    background-color: var(--apple-brand);
+  }
+
+  ::v-deep .el-switch__core:after {
+    background-color: var(--apple-surface);
+  }
+}
+
+.params-container {
+  padding: 16px;
+  border-radius: var(--apple-radius-md);
+  min-width: 280px;
+  background-color: var(--apple-surface);
+}
+
+.empty-tip {
+  padding: 20px;
+  color: var(--apple-text-3);
+  text-align: center;
+}
+
+.drawer-footer {
+  position: absolute;
+  bottom: 0;
+  z-index: 3;
+  width: 100%;
+  border-top: 1px solid var(--apple-divider-soft);
+  padding: 12px 16px;
+  text-align: center;
+  background: var(--apple-surface);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.drawer-footer .el-button {
+  border-radius: var(--apple-radius-md);
+  min-width: 80px;
+}
+
+.drawer-footer .el-button--primary {
+  background-color: var(--apple-brand);
+  border-color: var(--apple-brand);
+}
+
+.drawer-footer .el-button--primary:hover {
+  background-color: var(--apple-brand-hover);
+  border-color: var(--apple-brand-hover);
+}
+
+.info-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 1vh;
+  opacity: 0.7;
+}
+
+.custom-close-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--apple-surface-2);
+  font-size: 26px;
+  font-weight: var(--apple-font-weight-regular);
+  color: var(--apple-text-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  padding: 0;
+  outline: none;
+  transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+}
+
+.custom-close-btn:hover {
+  color: var(--apple-brand);
+  background-color: var(--apple-brand-tint);
+}
+
+::v-deep .el-checkbox__label {
+  display: none;
+}
+
+.mcp-access-point {
+  border-top: 1px solid var(--apple-divider-soft);
+  padding: 20px 24px;
+  text-align: left;
+}
+
+.mcp-header {
+  .bold-title {
+    font-size: var(--apple-font-size-md);
+    font-weight: var(--apple-font-weight-semibold);
+    margin: 5px 0 30px 0;
+    color: var(--apple-text);
+  }
+}
+
+.mcp-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.mcp-left,
+.mcp-right {
+  flex: 1;
+  padding-bottom: 50px;
+}
+
+.url-header {
+  margin-bottom: 8px;
+  color: var(--apple-text);
+
+  h4 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: var(--apple-font-weight-medium);
+  }
+
+  .address-desc {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: var(--apple-text-2);
+
+    .doc-link {
+      color: var(--apple-brand);
+      text-decoration: none;
+      margin-left: 4px;
+      transition: color var(--apple-duration-fast) var(--apple-ease-standard);
+
+      &:hover {
+        color: var(--apple-brand-hover);
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.url-input {
+  border-radius: var(--apple-radius-sm);
+  font-size: 14px;
+  height: 36px;
+  box-sizing: border-box;
+
+  ::v-deep .el-input__inner {
+    background-color: var(--apple-surface-2) !important;
+    border-radius: var(--apple-radius-sm);
+    border: 1px solid var(--apple-divider-soft);
+    color: var(--apple-text);
+  }
+
+  ::v-deep .el-input__suffix {
+    right: 0;
+    display: flex;
+    align-items: center;
+    padding-right: 10px;
+
+    .inner-copy-btn {
+      pointer-events: auto;
+      border: none;
+      background: var(--apple-brand);
+      color: var(--apple-surface);
+      padding: 6px 12px;
+      margin-top: 0;
+      margin-left: 4px;
+      border-radius: var(--apple-radius-sm);
+      transition: background-color var(--apple-duration-fast) var(--apple-ease-standard);
+
+      &:hover {
+        background: var(--apple-brand-hover);
+      }
+    }
+  }
+}
+
+.mcp-right {
+  h4 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: var(--apple-font-weight-medium);
+    color: var(--apple-text);
+  }
+}
+
+.status-container {
+  display: flex;
+  align-items: center;
+
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+
+    &.disconnected {
+      background-color: var(--apple-text-3);
+    }
+
+    &.connected {
+      background-color: var(--apple-success);
+    }
+
+    &.loading {
+      background-color: var(--apple-warning);
+      animation: pulse 1.5s infinite;
+    }
+  }
+
+  .status-text {
+    font-size: 14px;
+    margin-right: 10px;
+    color: var(--apple-text);
+  }
+
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: var(--apple-surface);
+    color: var(--apple-text);
+    border: 1px solid var(--apple-divider);
+    border-radius: var(--apple-radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+
+    &:hover {
+      background: var(--apple-brand);
+      color: var(--apple-surface);
+      border-color: var(--apple-brand);
+      transform: translateY(-1px);
+    }
+
+    .refresh-icon {
+      margin-right: 6px;
+      font-size: 14px;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.mcp-tools-list {
+  margin-top: 10px;
+
+  .tools-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tool-btn {
+    padding: 6px 12px;
+    border-color: var(--apple-brand);
+    color: var(--apple-brand);
+    background-color: var(--apple-surface);
+    font-size: 12px;
+    border-radius: var(--apple-radius-sm);
+    transition: all var(--apple-duration-fast) var(--apple-ease-standard);
+
+    &:hover {
+      background-color: var(--apple-brand);
+      color: var(--apple-surface);
+      border-color: var(--apple-brand);
+    }
+  }
+
+  .no-tools {
+    text-align: center;
+    color: var(--apple-text-3);
+    font-size: 14px;
+    padding: 10px 0;
+  }
+}
+</style>

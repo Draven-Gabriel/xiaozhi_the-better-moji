@@ -1,0 +1,1 @@
+INSERT INTO `sys_params` (id, param_code, param_value, value_type, param_type, remark) VALUES (311, 'enable_websocket_ping', 'false', 'boolean', 1, '是否启用WebSocket心跳保活机制');
