@@ -55,6 +55,8 @@ docker compose up -d --build
 
 ## 固件编译与烧录
 
+> 💡 不想编译？直接用预编译固件：`releases/movecall-moji-esp32s3_99.0.0.bin`（含全部定制，0x0 直接烧录，见 `releases/README.md`）
+
 ```bash
 cd xiaozhi-esp32
 # 需要 ESP-IDF v6.0.2 环境
