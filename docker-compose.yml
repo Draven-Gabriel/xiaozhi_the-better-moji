@@ -30,11 +30,12 @@ services:
       # 语音识别模型（首次部署需下载 model.pt，见 README）
       - ./server-data/models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
 
-  # 智控台（新版前端 + Java 后端，本地源码构建）
+  # 智控台（修改版前端 dist + 官方 Java 后端）
+  # 构建方式：基于南大源 web_latest 镜像 + 覆盖预构建的 dist（无需 node/maven，国内可用）
   xiaozhi-esp32-server-web:
     build:
       context: ./xiaozhi-esp32-server-main
-      dockerfile: Dockerfile-web
+      dockerfile: Dockerfile-web-local
     image: xiaozhi-moji/web:latest
     container_name: xiaozhi-esp32-server-web
     restart: always

@@ -5,3 +5,13 @@ __pycache__
 Dockerfile
 tmp/
 data/
+# 运行时数据/大文件，不进镜像
+main/xiaozhi-server/mysql/
+main/xiaozhi-server/models/
+main/xiaozhi-server/music/
+main/xiaozhi-server/tmp/
+main/xiaozhi-server/data/
+main/xiaozhi-server/.memory.yaml
+main/manager-web/node_modules/
+main/manager-web/tests/
+main/manager-web/*.png
